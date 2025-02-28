@@ -1,0 +1,27 @@
+services:
+  kafka:
+    image: bitnami/kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_KRAFT_CLUSTER_ID=my-cluster-id
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+    container_name: pubsub-kafka
+
+  database:
+    image: postgres:latest
+    container_name: pubsub-postgres
+    environment:
+      POSTGRES_USER: pubsub
+      POSTGRES_PASSWORD: pubsub
+      POSTGRES_DB: pubsub
+    ports:
+      - "5432:5432"
