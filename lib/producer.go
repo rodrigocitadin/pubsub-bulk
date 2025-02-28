@@ -1,36 +1,47 @@
-package pubsub
+package lib
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 	"gocloud.dev/pubsub"
 	_ "gocloud.dev/pubsub/kafkapubsub"
 )
 
-func Producer() {
-	ctx := context.Background()
+func Producer(ctx context.Context) {
+	pubURL := "kafka://messages"
 
-	messagesTopicURL := "kafka://messages"
-	messagesTopic, err := pubsub.OpenTopic(ctx, messagesTopicURL)
+	pub, err := pubsub.OpenTopic(ctx, pubURL)
 	if err != nil {
-		log.Fatalf("Error connecting to topic: %v", err)
+		log.Fatalf("Error opening pub: %v", err)
 	}
-	defer messagesTopic.Shutdown(ctx)
+	defer pub.Shutdown(ctx)
 
-	for i := 1; i <= 10; i++ {
-		if uuid, err := uuid.NewV7(); err == nil {
-			data := fmt.Sprintf(`{"id":%d, "message":"Message %d"}`, uuid, i)
+	log.Println("Producer running...")
 
-			if err := messagesTopic.Send(ctx, &pubsub.Message{Body: []byte(data)}); err != nil {
-				log.Printf("Error sending message: %v", err)
+	for i := 0; ; i++ {
+		select {
+		case <-ctx.Done():
+			log.Println("Producer closed")
+			return
+		default:
+			if uuid, err := uuid.NewV7(); err == nil {
+				data := fmt.Sprintf(`{"id":"%v", "message":"Message %d"}`, uuid, rand.Intn(100))
+
+				if err := pub.Send(ctx, &pubsub.Message{Body: []byte(data)}); err != nil {
+					log.Printf("Error sending message: %v", err)
+				} else {
+					log.Printf("Message %v sent", uuid)
+				}
 			} else {
-				log.Printf("Message %v sent!", uuid)
+				log.Fatalf("Error generating uuid v7: %v", err)
 			}
-		} else {
-			log.Fatalf("Error generating uuid v7: %v", err)
+
+			time.Sleep(2 * time.Second)
 		}
 	}
 }
