@@ -3,6 +3,7 @@ module rodrigocitadin/pubsub
 go 1.24.0
 
 require (
+	github.com/google/uuid v1.6.0
 	gocloud.dev v0.40.0
 	gocloud.dev/pubsub/kafkapubsub v0.40.0
 	gorm.io/driver/postgres v1.5.11
