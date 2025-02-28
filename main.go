@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"rodrigocitadin/pubsub/lib"
+	"rodrigocitadin/pubsub-bulk/consumer"
+	"rodrigocitadin/pubsub-bulk/producer"
 	"syscall"
 	"time"
 )
@@ -18,8 +19,8 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go lib.Consumer(ctx)
-	go lib.Producer(ctx)
+	go consumer.Start(ctx)
+	go producer.Start(ctx)
 
 	<-quit
 	fmt.Println("Leaving the program...")

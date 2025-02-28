@@ -1,4 +1,4 @@
-package lib
+package consumer
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type Message struct {
 	Message string    `json:"message"`
 }
 
-func Consumer(ctx context.Context) {
+func Start(ctx context.Context) {
 	subURL := "kafka://my-group?topic=messages"
 
 	sub, err := pubsub.OpenSubscription(ctx, subURL)

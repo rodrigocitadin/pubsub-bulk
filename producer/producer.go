@@ -1,4 +1,4 @@
-package lib
+package producer
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	_ "gocloud.dev/pubsub/kafkapubsub"
 )
 
-func Producer(ctx context.Context) {
+func Start(ctx context.Context) {
 	pubURL := "kafka://messages"
 
 	pub, err := pubsub.OpenTopic(ctx, pubURL)
