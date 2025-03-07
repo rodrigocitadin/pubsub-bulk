@@ -2,50 +2,64 @@ package consumer
 
 import (
 	"context"
-	"encoding/json"
-	"log"
+	"time"
 
-	"github.com/google/uuid"
-	"gocloud.dev/pubsub"
-	_ "gocloud.dev/pubsub/kafkapubsub"
+	"github.com/segmentio/kafka-go"
 )
 
-type Message struct {
-	ID      uuid.UUID `json:"id"`
-	Message string    `json:"message"`
+type Consumer struct {
+	reader *kafka.Reader
+	ctx    context.Context
 }
 
-func Start(ctx context.Context) {
-	subURL := "kafka://my-group?topic=messages"
+func New(urls []string, topic string, groupID string, context context.Context) Consumer {
+	return Consumer{
+		ctx: context,
+		reader: kafka.NewReader(kafka.ReaderConfig{
+			Brokers: urls,
+			Topic:   topic,
+			GroupID: groupID})}
+}
 
-	sub, err := pubsub.OpenSubscription(ctx, subURL)
+func (c Consumer) ReadMessage() (*kafka.Message, error) {
+	msg, err := c.reader.ReadMessage(c.ctx)
 	if err != nil {
-		log.Fatalf("Error opening sub: %v", err)
+		return nil, err
 	}
-	defer sub.Shutdown(ctx)
 
-	log.Println("Consumer running...")
+	return &msg, nil
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			log.Println("Consumer closed")
-			return
-		default:
-			msg, err := sub.Receive(ctx)
-			if err != nil {
-				log.Printf("Error receiving message: %v", err)
-				continue
-			}
+func (c Consumer) ReadMessageBatch(batchSize uint8, timeout uint8) (*[]kafka.Message, error) {
+	batch := make([]kafka.Message, 0, batchSize)
+	batchDeadline := time.Now().Add(time.Duration(timeout) * time.Second)
 
-			var message Message
-			if err := json.Unmarshal(msg.Body, &message); err != nil {
-				log.Printf("Error in JSON Unmarshal: %v", err)
-				continue
-			}
+	for len(batch) < int(batchSize) {
+		msgCtx, cancel := context.WithDeadline(c.ctx, batchDeadline)
+		msg, err := c.reader.FetchMessage(msgCtx)
+		cancel()
 
-			log.Printf("Message %v received", message.ID)
-			msg.Ack()
+		if time.Now().After(batchDeadline) {
+			break
+		}
+
+		if err != nil {
+			return nil, err
+		}
+
+		batch = append(batch, msg)
+	}
+
+	if len(batch) > 0 {
+		for _, msg := range batch {
+			c.reader.CommitMessages(c.ctx, msg)
 		}
 	}
+
+	return &batch, nil
 }
+
+func (p Consumer) Close() {
+	p.reader.Close()
+}
+
