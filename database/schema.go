@@ -8,5 +8,5 @@ import (
 type Message struct {
 	gorm.Model
 	ID    uuid.UUID `gorm:"type:uuid;primaryKey"`
-	Value string
+	Message string
 }

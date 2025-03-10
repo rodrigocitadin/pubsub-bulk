@@ -54,7 +54,7 @@ func startProducer(p producer.Producer) {
 			log.Fatal("Error creating UUID V7")
 		}
 
-		msg := database.Message{ID: uuid, Value: "Random message"}
+		msg := database.Message{ID: uuid, Message: "Random message"}
 		byteMsg, err := proto.Marshal(pb.ToProtoMessage(msg))
 		if err != nil {
 			log.Fatalf("Error in protobuf marshal")
@@ -77,9 +77,7 @@ func startConsumer(c consumer.Consumer, db database.Database) {
 		if msgs, err := c.ReadMessageBatch(5, 10); err != nil {
 			log.Fatal("Error reading batch of messages")
 		} else {
-			var batch []database.Message
-
-			log.Printf("Successful batch reading of %d messages\n", len(*msgs))
+			batch := make([]database.Message, 0, 5)
 
 			for _, msg := range *msgs {
 				id, err := uuid.ParseBytes(msg.Key)
@@ -101,9 +99,13 @@ func startConsumer(c consumer.Consumer, db database.Database) {
 				log.Printf("Message %v within batch", id)
 			}
 
-                        log.Print(batch)
-			db.BulkMessages(batch)
-			log.Print("All messages entered into the database")
+			log.Printf("Successful batch reading of %d messages\n", len(*msgs))
+
+			if err := db.BulkMessages(batch); err != nil {
+				log.Println("Error inserting messages to database:", err)
+			} else {
+				log.Print("All messages entered into the database")
+			}
 		}
 	}
 }

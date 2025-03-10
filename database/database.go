@@ -21,6 +21,6 @@ func Conn(url string) (*Database, error) {
 	}
 }
 
-func (d Database) BulkMessages(messages []Message) {
-	d.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&messages)
+func (d Database) BulkMessages(messages []Message) error {
+	return d.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&messages).Error
 }

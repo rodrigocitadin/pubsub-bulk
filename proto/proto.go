@@ -11,7 +11,7 @@ import (
 func ToProtoMessage(m database.Message) *Message {
 	return &Message{
 		Id:        m.ID.String(),
-		Value:     m.Value,
+		Message:     m.Message,
 		CreatedAt: timestamppb.New(m.CreatedAt),
 		UpdatedAt: timestamppb.New(m.UpdatedAt),
 		DeletedAt: timestamppb.New(m.DeletedAt.Time)}
@@ -25,7 +25,7 @@ func FromProtoMessage(pbMsg *Message) (database.Message, error) {
 
 	msg := database.Message{
 		ID:    id,
-		Value: pbMsg.Value,
+		Message: pbMsg.Message,
 	}
 
 	msg.CreatedAt = pbMsg.CreatedAt.AsTime()
