@@ -12,6 +12,9 @@ type Consumer struct {
 	ctx    context.Context
 }
 
+type OnConsume func(kafka.Message) error
+type OnConsumeBatch func([]kafka.Message) error
+
 func New(urls []string, topic string, groupID string, context context.Context) Consumer {
 	return Consumer{
 		ctx: context,
@@ -21,16 +24,25 @@ func New(urls []string, topic string, groupID string, context context.Context) C
 			GroupID: groupID})}
 }
 
-func (c Consumer) ReadMessage() (*kafka.Message, error) {
-	msg, err := c.reader.ReadMessage(c.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &msg, nil
+func (c Consumer) Close() {
+	c.reader.Close()
 }
 
-func (c Consumer) ReadMessageBatch(batchSize uint8, timeout uint8) (*[]kafka.Message, error) {
+func (c Consumer) ReadMessage(onConsume OnConsume) error {
+	msg, err := c.reader.FetchMessage(c.ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := onConsume(msg); err != nil {
+		return err
+	}
+
+	c.reader.CommitMessages(c.ctx, msg)
+	return nil
+}
+
+func (c Consumer) ReadMessageBatch(batchSize uint8, timeout uint8, onConsumeBatch OnConsumeBatch) error {
 	batch := make([]kafka.Message, 0, batchSize)
 	batchDeadline := time.Now().Add(time.Duration(timeout) * time.Second)
 
@@ -44,22 +56,21 @@ func (c Consumer) ReadMessageBatch(batchSize uint8, timeout uint8) (*[]kafka.Mes
 		}
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		batch = append(batch, msg)
 	}
 
 	if len(batch) > 0 {
+		if err := onConsumeBatch(batch); err != nil {
+			return err
+		}
+
 		for _, msg := range batch {
 			c.reader.CommitMessages(c.ctx, msg)
 		}
 	}
 
-	return &batch, nil
+	return nil
 }
-
-func (p Consumer) Close() {
-	p.reader.Close()
-}
-
